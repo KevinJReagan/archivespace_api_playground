@@ -48,5 +48,4 @@ class ArchiveSpace:
 
 if __name__ == "__main__":
     kevins_archivespace = ArchiveSpace()
-    # utk_archivesspace = ArchiveSpace("http://albatross.lib.utk.edu:8089", "mark", "mark")
-    # print(kevins_archivespace.get_repository(2))
+    print(kevins_archivespace.get_repository(2))
