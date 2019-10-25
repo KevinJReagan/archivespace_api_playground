@@ -1,5 +1,6 @@
 import requests
 import json
+from tqdm import tqdm
 
 
 class ArchiveSpace:
@@ -11,7 +12,6 @@ class ArchiveSpace:
 
     def authenticate(self):
         r = requests.post(url=f'{self.base_url}/users/{self.username}/login?password={self.password}')
-        print(r.json())
         return r.json()['session']
 
     def create_repository(self, repo_code, repo_name):
@@ -171,31 +171,62 @@ class ArchiveSpace:
             headers=self.headers)
         return r.json()['title']
 
-    def get_list_of_archival_objects_in_repository(self, repo_list):
-        search_string = f'{self.base_url}/repositories/{repo_list}/archival_objects?all_ids=true'
+    def get_list_of_archival_objects_in_repository(self, repo_id):
+        """ Lists numbers of archival objects in Repository in Archives Space
+
+        Args:
+            repo_id (int): repository ID you want to use
+
+        Returns:
+            list: a list of integers for each archival object
+
+        Examples:
+            >>> ArchiveSpace.get_list_of_archival_objects_in_repository(2)
+            [1,2,3,4,5,6]
+
+        """
+        search_string = f'{self.base_url}/repositories/{repo_id}/archival_objects?all_ids=true'
         r = requests.get(
             url=search_string,
             headers=self.headers
                 )
-        #print(search_string)
         return r.json()
 
-    def replace_double_commas_in_archival_object(self, id, repo_id=2):
-        metadata_from_archival_object = self.get_archival_object(id, repo_id)
-        display_string = metadata_from_archival_object['display_string']
-        print(display_string)
-        new_display_string = display_string.replace(',,', ',')
-        print(new_display_string)
-        metadata_from_archival_object['display_string'] = new_display_string
-        #metadata_from_archival_object["jsonmodel_type"] = "archival_object"
-        print(metadata_from_archival_object)
-        r = requests.post(
-            url=f'{self.base_url}/repositories/{repo_id}/archival_objects/{id}',
-            headers=self.headers,
-            data=json.dumps(metadata_from_archival_object)
-        )
-        print(r.status_code)
-        return r.json()['status']
+    def replace_comma_at_end(self, archival_object_id, repo_id=2):
+        """Replace comma at end of an archival objects title if it exists.
+
+        This method replaces the comma at the end of the title of an archival object if it exists.  This requires
+        the id of an archival object and optionally accepts the id of an ArchivesSpace repository.  The default
+        value is 2.
+
+        Args:
+            archival_object_id (int): The id of an Archival Object in ArchivesSpace.
+            repo_id (int): The id of the repository in ArchivesSpace.  2 by default.
+
+        Returns:
+            str: The status of the request or "No comma at end of title." If successful, the str should be "Updated."
+
+        Examples:
+            >>> ArchiveSpace().replace_comma_at_end(5630, 2)
+            'Updated'
+            >>> ArchiveSpace().replace_comma_at_end(5630, 2)
+            'No comma at end of title.'
+
+        """
+        metadata_from_archival_object = self.get_archival_object(archival_object_id, repo_id)
+        title = metadata_from_archival_object['title']
+        if title.endswith(','):
+            title = title[:-1]
+            metadata_from_archival_object['title'] = title
+            r = requests.post(
+                url=f'{self.base_url}/repositories/{repo_id}/archival_objects/{archival_object_id}',
+                headers=self.headers,
+                data=json.dumps(metadata_from_archival_object)
+            )
+            return r.json()['status']
+        else:
+            return "No comma at end of title."
+
 
     # def get_user_details(self):
     #     r = requests.get("X-ArchivesSpace-Session: $SESSION" "http://localhost:8089/users/1"
@@ -248,9 +279,6 @@ if __name__ == "__main__":
     # kevins_string = "This beer is bad."
     # print(kevins_string.replace('beer','wine'))
 
-    print(
-        kevins_archivespace.replace_double_commas_in_archival_object(5630, 2)
-    )
-
-
-
+    list_of_archival_objects = kevins_archivespace.get_list_of_archival_objects_in_repository(2)
+    for archival_object in tqdm(list_of_archival_objects):
+        kevins_archivespace.replace_comma_at_end(archival_object)
