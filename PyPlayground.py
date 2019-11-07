@@ -3,6 +3,24 @@ import json
 from tqdm import tqdm
 
 
+class AncestorsSolrSearch:
+    def __init__(self,
+                 url="http://porter.lib.utk.edu:8080",
+                 ancestor="gsmrc:webster",
+                 solr_fields='mods_note_s,mods_identifier_local_s,PID'
+                 ):
+        self.base_url = f'{url}/solr/collection1/select?q=ancestors_ms:"{ancestor}"&fl={solr_fields}&wt=json&indent=true'
+        self.rows = self.get_rows()
+
+    def get_rows(self):
+        r = requests.get(self.base_url)
+        return r.json()['response']['numFound']
+
+    def get_all_digital_objects(self):
+        r = requests.get(f'{self.base_url}&rows={self.rows}')
+        return r.json()['response']['docs']
+
+
 class ArchiveSpace:
     def __init__(self, url='http://localhost:8089', user='admin', password='admin'):
         self.base_url = url
