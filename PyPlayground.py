@@ -210,6 +210,50 @@ class ArchiveSpace:
                 )
         return r.json()
 
+    def link_archival_object_to_digital_object(self,
+                                               repo_id,
+                                               archival_object_id,
+                                               digital_object_id):
+        """Links an archival object to an existing digital object.
+
+        This method takes an archival object id and a digital object id and links them together. To do this, we
+        create a dictionary called digital_object that stores a link to the existing digital object id.  We also
+        create a variable called existing_object that stores the existing archival object based on its archival
+        object id. We then append the instances list inside the existing_object with our new digital_object dictionary.
+        Finally, we use the update an archival object API to push this update to ArchivesSpace.
+
+        Args:
+            repo_id (int): The repository id of your ArchivesSpace repository.
+            archival_object_id (int): The id of our archival object.
+            digital_object_id (int): The id of our digital object.
+
+        Returns:
+            dict: A dictionary with messaging about whether or not this worked.
+
+        Examples:
+            >>> ArchiveSpace.link_archival_object_to_digital_object(2, 6278, 602)
+            {'status': 'Updated', 'id': 6278, 'lock_version': 1, 'stale': True, 'uri':
+            '/repositories/2/archival_objects/6278', 'warnings': []}
+
+        """
+        digital_object = {
+            'is_representative': True,
+            'instance_type': 'digital_object',
+            'jsonmodel_type': 'instance',
+            'digital_object': {
+                'ref': f'/repositories/2/digital_objects/{digital_object_id}'
+            }
+        }
+        existing_object = self.get_archival_object(
+            id=archival_object_id,
+            repo_id=repo_id
+        )
+        existing_object['instances'].append(digital_object)
+        r = requests.post(url=f'{self.base_url}/repositories/{repo_id}/archival_objects/{archival_object_id}',
+                          headers=self.headers,
+                          data=json.dumps(existing_object))
+        return r.json()
+
     def replace_comma_at_end(self, archival_object_id, repo_id=2):
         """Replace comma at end of an archival objects title if it exists.
 
@@ -245,6 +289,66 @@ class ArchiveSpace:
         else:
             return "No comma at end of title."
 
+    def getresources(self, repo_id):
+        r = requests.get(
+            url=f'{self.base_url}/repositories/{repo_id}/resources?page=2&page_size=1',
+            headers=self.headers,
+        )
+        return r.json()
+
+    def get_a_resource(self, repo_id, resource_id):
+        r = requests.get(
+            url=f'{self.base_url}/repositories/{repo_id}/resources/{resource_id}',
+            headers=self.headers,
+        )
+        return r.json()
+
+    def get_associated_archival_objects(self, repo_id, resource_id):
+        r = requests.get(
+            url=f'{self.base_url}/repositories/{repo_id}/resources/{resource_id}/ordered_records',
+            headers=self.headers,
+        )
+        return r.json()
+
+    def get_a_digital_object(self, repo_id, digital_object_id):
+        r = requests.get(
+            url=f'{self.base_url}/repositories/{repo_id}/digital_objects/{digital_object_id}',
+            headers=self.headers,
+        )
+        return r.json()
+
+    def create_a_digital_object(self,
+                                repo_id,
+                                digital_object_id,
+                                url,
+                                title
+                                ):
+        my_dictionary = {
+            "jsonmodel_type": "digital_object",
+            "external_ids": [],
+            "subjects": [],
+            "linked_events": [],
+            "external_documents":[],
+            "rights_statements":[],
+            "linked_agents":[],
+            "is_slug_auto": True,
+            "file_versions":[
+                { "jsonmodel_type":"file_version",
+                  "is_representative": True,
+                  "file_uri": url,
+                  "xlink_actuate_attribute":"onRequest",
+                  "xlink_show_attribute":"new",
+                  "publish": True}],
+            "restrictions": False,
+            "notes":[],
+            "linked_instances":[],
+            "title": title,
+            "digital_object_id": digital_object_id
+        }
+        r = requests.post(url=f'{self.base_url}/repositories/{repo_id}/digital_objects',
+                          headers=self.headers,
+                          data=json.dumps(my_dictionary))
+        return r.json()
 
     # def get_user_details(self):
     #     r = requests.get("X-ArchivesSpace-Session: $SESSION" "http://localhost:8089/users/1"
@@ -266,6 +370,7 @@ class ArchiveSpace:
 
 if __name__ == "__main__":
     kevins_archivespace = ArchiveSpace()
+    webster = AncestorsSolrSearch().get_all_digital_objects()
     # print(kevins_archivespace.get_created_by_value_for_this_repo(2))
     #print(kevins_archivespace.list_all_repositories())
     #print(kevins_archivespace.create_new_user("john", "password123"))
@@ -297,6 +402,43 @@ if __name__ == "__main__":
     # kevins_string = "This beer is bad."
     # print(kevins_string.replace('beer','wine'))
 
-    list_of_archival_objects = kevins_archivespace.get_list_of_archival_objects_in_repository(2)
-    for archival_object in tqdm(list_of_archival_objects):
-        kevins_archivespace.replace_comma_at_end(archival_object)
+    # list_of_archival_objects = kevins_archivespace.get_list_of_archival_objects_in_repository(2)
+    # for archival_object in tqdm(list_of_archival_objects):
+    #     kevins_archivespace.replace_comma_at_end(archival_object)
+    # print(
+    #     kevins_archivespace.get_associated_archival_objects(
+    #         2,
+    #         13
+    #     )
+    # )
+    # print(
+    #     kevins_archivespace.get_a_resource(2, 13)
+    # )
+    # print(
+    #     kevins_archivespace.get_a_digital_object(
+    #         repo_id=2,
+    #         digital_object_id=601
+    #     )
+    # )
+    # print(
+    #     kevins_archivespace.create_a_digital_object(
+    #         repo_id=2,
+    #         digital_object_id='0012_002333_000711_0001',
+    #         url='https://digital.lib.utk.edu/collections/islandora/object/webster:1460',
+    #         title='#434: Rainbow Falls'
+    #     )
+    # )
+    # print(
+    #     kevins_archivespace.get_archival_object(
+    #         id=5763,
+    #         repo_id=2
+    #     )
+    # )
+    print(
+        kevins_archivespace.link_archival_object_to_digital_object(
+            repo_id=2,
+            archival_object_id=6278,
+            digital_object_id=602
+        )
+    )
+
