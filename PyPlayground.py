@@ -254,6 +254,26 @@ class ArchiveSpace:
                           data=json.dumps(existing_object))
         return r.json()
 
+    def link_digital_object_to_a_collection(self,
+                                            repo_id,
+                                            resource_id,
+                                            digital_object_id):
+        digital_object = {
+            'is_representative': False,
+            'instance_type': 'digital_object',
+            'jsonmodel_type': 'instance',
+            'digital_object': {
+                'ref': f'/repositories/2/digital_objects/{digital_object_id}'
+            }
+        }
+        existing_collection = self.get_a_resource(repo_id, resource_id)
+        existing_collection['instances'].append(digital_object)
+        r = requests.post(url=f'{self.base_url}/repositories/{repo_id}/resources/{resource_id}',
+                          headers=self.headers,
+                          data=json.dumps(existing_collection))
+        return r.json()
+
+
     def replace_comma_at_end(self, archival_object_id, repo_id=2):
         """Replace comma at end of an archival objects title if it exists.
 
@@ -323,6 +343,27 @@ class ArchiveSpace:
                                 url,
                                 title
                                 ):
+        """Creates a digital object.
+
+        This takes a repo id , the id of a digital object, a url , and a title and creates a digital object in
+        ArchivesSpace.
+
+        Args:
+            repo_id(int): The id of a repository in ArchivesSpace.
+            digital_object_id (str): A unique identifer for your new digital object in ArchivesSpace.
+            url (str): The url to the digital object in another system.
+            title (str): The title of your new digital object.
+
+        Return:
+            dict: A dict with the status of your request.
+
+        Examples:
+            >>> ArchiveSpace.create_a_digital_object(2, 'abc8776', 'http://google.com', 'The title of my new object')
+            {'status': 'Created', 'id': 703, 'lock_version': 0, 'stale': None, 'uri': '/repositories/2/digital_objects/703', 'warnings': []}
+            >>> ArchiveSpace.create_a_digital_object(2, 'abc8776', 'http://google.com', 'The title of my new object')
+            {'error': {'digital_object_id': ['Must be unique']}}
+
+        """
         my_dictionary = {
             "jsonmodel_type": "digital_object",
             "external_ids": [],
@@ -434,11 +475,44 @@ if __name__ == "__main__":
     #         repo_id=2
     #     )
     # )
-    print(
-        kevins_archivespace.link_archival_object_to_digital_object(
-            repo_id=2,
-            archival_object_id=6278,
-            digital_object_id=602
-        )
-    )
+    # print(
+    #     kevins_archivespace.link_archival_object_to_digital_object(
+    #         repo_id=2,
+    #         archival_object_id=6278,
+    #         digital_object_id=602
+    #     )
+    # )
+    # with open('output.json', 'w') as my_file:
+    #     my_file.write(str(kevins_archivespace.get_associated_archival_objects(2, 13)))
 
+    def link_webster_objects():
+        our_archival_objects = []
+        i = 0
+        for archical_object in kevins_archivespace.get_associated_archival_objects(2,13)['uris']:
+            if i != 0:
+                our_archival_objects.append(archical_object)
+            i += 1
+        all_titles = [x['display_string'] for x in our_archival_objects if x['ref'].rfind('archival_objects') != -1]
+        for x in our_archival_objects:
+            title = x['display_string'].split(',,')[0]
+            archival_object_id = x['ref'].split('/')[4]
+            occurences = all_titles.count(x['display_string'])
+            for digital_object in webster:
+                if digital_object['mods_note_s'] == title:
+                    # print(digital_object)
+                    print(status)
+                    status = kevins_archivespace.create_a_digital_object(2,
+                                                                        digital_object['mods_identifier_local_s'],
+                                                                        f'https://digital.lib.utk.edu/collections/islandora/object/{digital_object["PID"]}',
+                                                                        digital_object['mods_note_s'])
+                    try:
+                        if status['status'] == "Created" and occurences == 1:
+                            kevins_archivespace.link_archival_object_to_digital_object(2,
+                                                                                       archival_object_id,
+                                                                                       status['id'])
+                            break
+                    except KeyError:
+                        break
+    #
+    # print(kevins_archivespace.create_a_digital_object(2, 'abcdefghijk', 'http://google.com', 'Delete me'))
+    print(kevins_archivespace.link_digital_object_to_a_collection(2, 13, 760))
