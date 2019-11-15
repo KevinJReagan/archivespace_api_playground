@@ -20,6 +20,10 @@ class AncestorsSolrSearch:
         r = requests.get(f'{self.base_url}&rows={self.rows}')
         return r.json()['response']['docs']
 
+    def get_first_page_of_objects(self):
+        r = requests.get(f'{self.base_url}')
+        return r.json()['response']['docs']
+
 
 class ArchiveSpace:
     def __init__(self, url='http://localhost:8089', user='admin', password='admin'):
@@ -411,7 +415,7 @@ class ArchiveSpace:
 
 if __name__ == "__main__":
     kevins_archivespace = ArchiveSpace()
-    webster = AncestorsSolrSearch().get_all_digital_objects()
+    #webster = AncestorsSolrSearch().get_first_page_of_objects()
     # print(kevins_archivespace.get_created_by_value_for_this_repo(2))
     #print(kevins_archivespace.list_all_repositories())
     #print(kevins_archivespace.create_new_user("john", "password123"))
@@ -515,4 +519,38 @@ if __name__ == "__main__":
                         break
     #
     # print(kevins_archivespace.create_a_digital_object(2, 'abcdefghijk', 'http://google.com', 'Delete me'))
-    print(kevins_archivespace.link_digital_object_to_a_collection(2, 13, 760))
+
+    def link_solr_objects_to_collection(solr_objects, collection_id):
+        """Creates digital objects in a space and links to an a-space collection
+
+         Requires a list of solr objects and creates a digital object for each item in list and links to a collection
+         in aspace
+
+        Args:
+             solr_objects (list): A list of Solr objects from Islandora as dicts with the PID, the identifier, and title
+             of the object
+             collection_id (int): the number that represents a collection in Archives Space
+
+        Returns:
+            dict: a dict with a list of key errors that happened and the digital objects that were successfully linked
+
+        """
+        errors = []
+        successes = []
+        for item in tqdm(solr_objects):c
+            status = kevins_archivespace.create_a_digital_object(2,
+                                                                 item['mods_identifier_local_s'],
+                                                                 f'https://digital.lib.utk.edu/collections/islandora/object/{item["PID"]}',
+                                                                 item['mods_note_s'])
+            try:
+                if status['status'] == 'Created':
+                    kevins_archivespace.link_digital_object_to_a_collection(2,collection_id,status['id'])
+                    successes.append(status['id'])
+            except KeyError:
+                errors.append(item)
+                pass
+        return {"errors": errors, }
+
+     # print(kevins_archivespace.link_digital_object_to_a_collection(2, 13, 760))
+    sample = {'responseHeader': {'status': 0, 'QTime': 86, 'params': {'q': 'ancestors_ms:"gsmrc:webster"', 'indent': 'true', 'fl': 'mods_note_s,mods_identifier_local_s,PID', 'wt': 'json'}}, 'response': {'numFound': 514, 'start': 0, 'docs': [{'PID': 'webster:1052', 'mods_note_s': '#27: Cabin at Three Forks', 'mods_identifier_local_s': '0012_002333_000229_0001'}, {'PID': 'webster:1020', 'mods_note_s': '#9: View from House Mountain', 'mods_identifier_local_s': '0012_002333_000211_0001'}, {'PID': 'webster:1072', 'mods_note_s': "#78: Group at Major Campbell's", 'mods_identifier_local_s': '0012_002333_000288_0001'}, {'PID': 'webster:1132', 'mods_note_s': '#130: The Barn', 'mods_identifier_local_s': '0012_002333_000345_0001'}, {'PID': 'webster:1134', 'mods_note_s': '#132: Down Roaring Fork with Dutch Roth, Harvey Broome, Harris [?], & Sonny Morris', 'mods_identifier_local_s': '0012_002333_000347_0001'}, {'PID': 'webster:1135', 'mods_note_s': '#133: Sheep at Standing Indian', 'mods_identifier_local_s': '0012_002333_000348_0001'}, {'PID': 'webster:1133', 'mods_note_s': '#131: Self at odd shaped tree near Strattons Bald', 'mods_identifier_local_s': '0012_002333_000346_0001'}, {'PID': 'webster:1137', 'mods_note_s': '#135: State Line', 'mods_identifier_local_s': '0012_002333_000351_0001'}, {'PID': 'webster:1136', 'mods_note_s': '#134: Little fall on Ekaneekle Creek on return from Gregory', 'mods_identifier_local_s': '0012_002333_000349_0001'}, {'PID': 'webster:1139', 'mods_note_s': '#136: Tub Mill on Ramsey Prong - Greenbrier. Special', 'mods_identifier_local_s': '0012_002333_000353_0001'}]}}
+    print(link_solr_objects_to_collection(sample['response']['docs'], 6))
